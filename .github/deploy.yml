@@ -1,0 +1,24 @@
+# .github/workflows/deploy.yml (后端)
+name: Deploy Backend to Server
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Deploy to Server and Restart
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd ${{ secrets.DEPLOY_PATH }}
+          git pull origin main
+          npm install
+          npx prisma migrate deploy
+          pm2 restart student-platform-api
