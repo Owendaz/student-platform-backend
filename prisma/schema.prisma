@@ -1,0 +1,91 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- 全新的用户模型 ---
+model User {
+  id          String    @id @default(uuid())
+  studentId   String    @unique // 学号，现在是唯一的登录凭据
+  name        String    // 真实姓名
+  password    String
+  email       String?   // 邮箱，现在是可选的
+  
+  college     String    // 学院
+  major       String    // 专业
+  grade       String    // 年级
+  position    String    // 身份/职位, e.g., "部长", "干事", "主席"
+
+  role        Role      @default(STUDENT_CADRE) // 默认新注册用户为学生干部
+  isApproved  Boolean   @default(false)
+
+  // 关联到部门
+  departmentId String?   // 外键
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  // 用户的项目指派关系 (保持不变)
+  assignedProjects ProjectAssignment[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// --- 全新的部门模型 ---
+model Department {
+  id      String  @id @default(uuid())
+  name    String  @unique // 部门名称, e.g., "校团委", "组织部"
+
+  // 用于实现层级关系
+  parentId  String?
+  parent    Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children  Department[] @relation("DepartmentHierarchy")
+
+  // 部门下的所有用户
+  users   User[]
+}
+
+// --- 项目模型 (保持不变) ---
+model Project {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  status      Status    @default(NOT_STARTED)
+  deadline    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  assignedTo  ProjectAssignment[]
+}
+
+// --- 项目指派模型 (保持不变) ---
+model ProjectAssignment {
+  userId    String
+  projectId String
+  assignedAt DateTime @default(now())
+
+  @@id([userId, projectId])
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+}
+
+// --- 全新的角色枚举 ---
+enum Role {
+  VISITOR          // 游客
+  STUDENT_CADRE    // 学生干部
+  DEPARTMENT_HEAD  // 部门负责人
+  SUPER_ADMIN      // 超级管理员
+}
+
+// --- 状态枚举 (保持不变) ---
+enum Status {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  PENDING_REVIEW
+}
